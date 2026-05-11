@@ -6,6 +6,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path.cwd()
 DEFAULT_INPUT = ROOT / "README.md"
 DEFAULT_OUTPUT = ROOT / "README.pdf"

@@ -47,6 +47,24 @@ def extract_mermaid_label(token: str) -> tuple[str, str]:
     match = re.match(r'([A-Za-z0-9_]+)\["(.+?)"\]', token)
     if match:
         return match.group(1), match.group(2)
+    match = re.match(r"([A-Za-z0-9_]+)\(\((.+?)\)\)", token)
+    if match:
+        return match.group(1), match.group(2)
+    match = re.match(r"([A-Za-z0-9_]+)\(\[(.+?)\]\)", token)
+    if match:
+        return match.group(1), match.group(2)
+    match = re.match(r"([A-Za-z0-9_]+)\[\((.+?)\)\]", token)
+    if match:
+        return match.group(1), match.group(2)
+    match = re.match(r"([A-Za-z0-9_]+)>(.+?)\]", token)
+    if match:
+        return match.group(1), match.group(2)
+    match = re.match(r"([A-Za-z0-9_]+)\{\{(.+?)\}\}", token)
+    if match:
+        return match.group(1), match.group(2)
+    match = re.match(r"([A-Za-z0-9_]+)\[/(.+?)/\]", token)
+    if match:
+        return match.group(1), match.group(2)
     match = re.match(r"([A-Za-z0-9_]+)\[(.+?)\]", token)
     if match:
         return match.group(1), match.group(2).strip('"')
@@ -77,7 +95,7 @@ def render_mermaid_image(code: list[str]) -> Path | None:
         return path
     if kind.startswith("stateDiagram"):
         render_state(code, path)
-    elif kind.startswith("flowchart"):
+    elif kind.startswith(("flowchart", "graph")):
         render_flowchart(code, path)
     else:
         return None
@@ -87,7 +105,7 @@ def render_mermaid_image(code: list[str]) -> Path | None:
 def try_render_mermaid_with_cli(code: list[str], index: int) -> Path | None:
     try:
         return render_mermaid_with_cli(code, index)
-    except RuntimeError as error:
+    except (RuntimeError, subprocess.SubprocessError) as error:
         if os.environ.get("MD2PDF_STRICT_MERMAID"):
             raise
         if not config.QUIET:
@@ -97,7 +115,7 @@ def try_render_mermaid_with_cli(code: list[str], index: int) -> Path | None:
 
 
 def render_mermaid_with_cli(code: list[str], index: int) -> Path | None:
-    local_mmdc = config.ROOT / "node_modules" / ".bin" / "mmdc"
+    local_mmdc = config.PROJECT_ROOT / "node_modules" / ".bin" / "mmdc"
     mmdc = str(local_mmdc) if local_mmdc.exists() else shutil.which("mmdc")
     if not mmdc:
         return None
@@ -105,8 +123,8 @@ def render_mermaid_with_cli(code: list[str], index: int) -> Path | None:
 
     source = config.MERMAID_DIR / f"diagram_{index:02d}.mmd"
     target = config.MERMAID_DIR / f"diagram_{index:02d}.png"
-    puppeteer_config = config.MERMAID_DIR / "puppeteer-config.json"
-    mermaid_config = config.MERMAID_DIR / "mermaid-config.json"
+    puppeteer_config = config.MERMAID_DIR / f"diagram_{index:02d}_puppeteer-config.json"
+    mermaid_config = config.MERMAID_DIR / f"diagram_{index:02d}_mermaid-config.json"
     source.write_text("\n".join(prepare_mermaid_for_pdf(code)) + "\n", encoding="utf-8")
     puppeteer_config.write_text(
         json.dumps({"args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]}),
@@ -164,7 +182,7 @@ def render_mermaid_with_cli(code: list[str], index: int) -> Path | None:
         "--output",
         str(target),
     ]
-    result = subprocess.run(command, cwd=config.ROOT, text=True, capture_output=True, timeout=60)
+    result = subprocess.run(command, cwd=config.PROJECT_ROOT, text=True, capture_output=True, timeout=60)
     if result.returncode != 0 or not target.exists():
         message = (result.stderr or result.stdout or "unknown Mermaid CLI error").strip()
         raise RuntimeError(f"Mermaid render failed for {source.name}: {message}")
@@ -175,11 +193,11 @@ def render_mermaid_with_cli(code: list[str], index: int) -> Path | None:
 def resolve_mermaid_viewport(code: list[str]) -> tuple[int, int]:
     first = next((line.strip() for line in code if line.strip()), "")
     if first.startswith("sequenceDiagram"):
-        participants = sum(1 for line in code if line.strip().startswith("participant "))
-        messages = sum(1 for line in code if "->>" in line)
+        participants = sum(1 for line in code if line.strip().startswith(("participant ", "actor ")))
+        messages = sum(1 for line in code if parse_sequence_message(line.strip()) is not None)
         return max(2600, participants * 950), max(1500, messages * 190 + 650)
-    if first.startswith("flowchart"):
-        edge_count = sum(1 for line in code if "-->" in line)
+    if first.startswith(("flowchart", "graph")):
+        edge_count = sum(count_flowchart_edges(line.strip()) for line in code)
         return (2200, max(1500, edge_count * 260)) if edge_count >= 5 else (2000, 1300)
     if first.startswith("stateDiagram"):
         return 2200, 1600
@@ -191,8 +209,8 @@ def prepare_mermaid_for_pdf(code: list[str]) -> list[str]:
     if not prepared:
         return prepared
     first = prepared[0].strip()
-    edge_count = sum(1 for line in prepared if "-->" in line)
-    if first == "flowchart LR" and edge_count >= 5:
+    edge_count = sum(count_flowchart_edges(line.strip()) for line in prepared)
+    if first in {"flowchart LR", "graph LR"} and edge_count >= 5:
         prepared[0] = "flowchart TB"
     return prepared
 
@@ -260,6 +278,144 @@ def draw_arrow(draw, start, end, color="#475569"):
     draw.polygon(points, fill=color)
 
 
+FLOWCHART_EDGE_RE = re.compile(r"-\..*?->|o--o|x--x|--[ox]|[ox]--|-->|==>|---")
+
+
+def split_flowchart_statements(line: str) -> list[str]:
+    statements: list[str] = []
+    current: list[str] = []
+    bracket_depth = 0
+    quoted = False
+    escaped = False
+    for char in line:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            current.append(char)
+            escaped = True
+            continue
+        if char == '"':
+            quoted = not quoted
+            current.append(char)
+            continue
+        if not quoted and char in "[({":
+            bracket_depth += 1
+        elif not quoted and char in "])}" and bracket_depth:
+            bracket_depth -= 1
+        if char == ";" and not quoted and bracket_depth == 0:
+            statement = "".join(current).strip()
+            if statement:
+                statements.append(statement)
+            current = []
+        else:
+            current.append(char)
+    statement = "".join(current).strip()
+    if statement:
+        statements.append(statement)
+    return statements
+
+
+def split_flowchart_edges(line: str) -> list[tuple[str, str]]:
+    matches = []
+    bracket_depth = 0
+    quoted = False
+    escaped = False
+    index = 0
+    while index < len(line):
+        char = line[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\":
+            escaped = True
+            index += 1
+            continue
+        if char == '"':
+            quoted = not quoted
+            index += 1
+            continue
+        if not quoted and char in "[({":
+            bracket_depth += 1
+        elif not quoted and char in "])}" and bracket_depth:
+            bracket_depth -= 1
+        if not quoted and bracket_depth == 0:
+            match = FLOWCHART_EDGE_RE.match(line, index)
+            if match:
+                matches.append(match)
+                index = match.end()
+                continue
+        index += 1
+    edges: list[tuple[str, str]] = []
+    for index, match in enumerate(matches):
+        left_start = 0 if index == 0 else matches[index - 1].end()
+        right_end = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+        left = line[left_start : match.start()].strip()
+        right = line[match.end() : right_end].strip()
+        if left and right:
+            edges.append((left, right))
+    return edges
+
+
+def split_flowchart_edge(line: str) -> tuple[str, str] | None:
+    edges = split_flowchart_edges(line)
+    return edges[0] if edges else None
+
+
+def count_flowchart_edges(line: str) -> int:
+    return sum(len(split_flowchart_edges(statement)) for statement in split_flowchart_statements(line))
+
+
+def split_flowchart_group(token: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    bracket_depth = 0
+    quoted = False
+    escaped = False
+    for char in token:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            current.append(char)
+            escaped = True
+            continue
+        if char == '"':
+            quoted = not quoted
+            current.append(char)
+            continue
+        if not quoted and char in "[({":
+            bracket_depth += 1
+        elif not quoted and char in "])}" and bracket_depth:
+            bracket_depth -= 1
+        if char == "&" and not quoted and bracket_depth == 0:
+            item = "".join(current).strip()
+            if item:
+                parts.append(item)
+            current = []
+        else:
+            current.append(char)
+    item = "".join(current).strip()
+    if item:
+        parts.append(item)
+    return parts or [token.strip()]
+
+
+def parse_sequence_message(line: str) -> tuple[str, str, str, bool] | None:
+    match = re.match(r"(.+?)(--|-)(?:>>|>|\)|x)([+-]?)(.+?):(.+)", line)
+    if not match:
+        return None
+    return (
+        match.group(1).strip(),
+        match.group(4).strip(),
+        match.group(5).strip(),
+        match.group(2) == "--",
+    )
+
+
 def parse_edges(code: list[str]) -> tuple[str, dict[str, str], list[tuple[str, str, str]]]:
     header = code[0].strip()
     direction = "LR" if " LR" in header else "TB"
@@ -269,17 +425,27 @@ def parse_edges(code: list[str]) -> tuple[str, dict[str, str], list[tuple[str, s
         line = raw.strip()
         if not line or line.startswith("%%"):
             continue
-        line = re.sub(r"\|([^|]+)\|", r" ", line)
-        if "-->" not in line:
+        if line.startswith(("classDef ", "class ", "style ", "linkStyle ", "subgraph ", "direction ", "click ")):
             continue
-        left, right = line.split("-->", 1)
-        source_id, source_label = extract_mermaid_label(left)
-        target_id, target_label = extract_mermaid_label(right)
-        if source_id not in labels or source_label != source_id:
-            labels[source_id] = source_label
-        if target_id not in labels or target_label != target_id:
-            labels[target_id] = target_label
-        edges.append((source_id, target_id, ""))
+        if line == "end":
+            continue
+        line = re.sub(r"\|([^|]+)\|", r" ", line)
+        for statement in split_flowchart_statements(line):
+            edge_parts = split_flowchart_edges(statement)
+            if not edge_parts:
+                node_id, node_label = extract_mermaid_label(statement)
+                if node_id and node_id not in labels:
+                    labels[node_id] = node_label
+                continue
+            for left, right in edge_parts:
+                sources = [extract_mermaid_label(item) for item in split_flowchart_group(left)]
+                targets = [extract_mermaid_label(item) for item in split_flowchart_group(right)]
+                for node_id, node_label in [*sources, *targets]:
+                    if node_id not in labels or node_label != node_id:
+                        labels[node_id] = node_label
+                for source_id, _ in sources:
+                    for target_id, _ in targets:
+                        edges.append((source_id, target_id, ""))
     return direction, labels, edges
 
 
@@ -326,8 +492,13 @@ def render_flowchart(code: list[str], path: Path) -> None:
 def render_state(code: list[str], path: Path) -> None:
     image, draw = base_canvas()
     rows = []
+    aliases = {}
     for raw in code[1:]:
         line = raw.strip()
+        alias_match = re.match(r'state\s+"(.+?)"\s+as\s+(\w+)', line)
+        if alias_match:
+            aliases[alias_match.group(2)] = alias_match.group(1)
+            continue
         if "-->" in line:
             left, right = line.split("-->", 1)
             target, label = right.split(":", 1) if ":" in right else (right, "")
@@ -337,7 +508,7 @@ def render_state(code: list[str], path: Path) -> None:
         for node in (source, target):
             if node not in nodes:
                 nodes.append(node)
-    labels = {node: ("Старт/конец" if node == "[*]" else node) for node in nodes}
+    labels = {node: ("Старт/конец" if node == "[*]" else aliases.get(node, node)) for node in nodes}
     positions = {node: (110 + (i % 4) * 340, 110 + (i // 4) * 160) for i, node in enumerate(nodes)}
     for source, target, label in rows:
         if source in positions and target in positions:
@@ -357,21 +528,14 @@ def render_sequence(code: list[str], path: Path) -> None:
     messages: list[tuple[str, str, str, bool]] = []
     for raw in code[1:]:
         line = raw.strip()
-        if line.startswith("participant "):
-            match = re.match(r"participant\s+(\w+)\s+as\s+(.+)", line)
+        if line.startswith(("participant ", "actor ")):
+            match = re.match(r"(?:participant|actor)\s+(\w+)(?:\s+as\s+(.+))?", line)
             if match:
-                participants.append((match.group(1), match.group(2)))
-        elif "->>" in line:
-            match = re.match(r"(.+?)(--|-)>>(.+?):(.+)", line)
-            if match:
-                messages.append(
-                    (
-                        match.group(1).strip(),
-                        match.group(3).strip(),
-                        match.group(4).strip(),
-                        match.group(2) == "--",
-                    )
-                )
+                participants.append((match.group(1), match.group(2) or match.group(1)))
+        else:
+            message = parse_sequence_message(line)
+            if message:
+                messages.append(message)
     if not participants:
         ids = []
         for source, target, _, _ in messages:
@@ -379,6 +543,13 @@ def render_sequence(code: list[str], path: Path) -> None:
                 if item not in ids:
                     ids.append(item)
         participants = [(item, item) for item in ids]
+    else:
+        known = {pid for pid, _ in participants}
+        for source, target, _, _ in messages:
+            for item in (source, target):
+                if item not in known:
+                    participants.append((item, item))
+                    known.add(item)
 
     width = max(1500, 360 + max(0, len(participants) - 1) * 520)
     top = 80
@@ -460,30 +631,85 @@ def draw_sequence_arrow(draw, sx: int, tx: int, y: int, dashed: bool = False) ->
     draw.polygon(points, fill="black")
 
 
+def parse_xychart_labels(line: str) -> list[str]:
+    raw = line.removeprefix("x-axis ").strip()
+    bracketed = re.fullmatch(r"\[(.*)\]", raw)
+    value = bracketed.group(1) if bracketed else raw
+    labels: list[str] = []
+    current: list[str] = []
+    quoted = False
+    escaped = False
+    for char in value:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == '"':
+            quoted = not quoted
+            continue
+        if char == "," and not quoted:
+            label = "".join(current).strip()
+            if label:
+                labels.append(label)
+            current = []
+        else:
+            current.append(char)
+    label = "".join(current).strip()
+    if label:
+        labels.append(label)
+    if labels:
+        return labels
+    quoted_labels = re.findall(r'"([^"]+)"', raw)
+    if quoted_labels:
+        return quoted_labels
+    if bracketed:
+        return [item.strip().strip('"') for item in bracketed.group(1).split(",") if item.strip()]
+    return []
+
+
+def parse_xychart_values(line: str) -> list[float]:
+    pattern = r"(?<![\w.])-?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?(?![\w.])"
+    return [float(item) for item in re.findall(pattern, line)]
+
+
+def parse_xychart_series(code: list[str]) -> tuple[list[float], list[float]]:
+    bars: list[float] = []
+    line_values: list[float] = []
+    for raw in code:
+        line = raw.strip()
+        if line.startswith("bar "):
+            bars = parse_xychart_values(line)
+        elif line.startswith("line "):
+            line_values = parse_xychart_values(line)
+    return bars, line_values
+
+
 def render_xychart(code: list[str], path: Path) -> None:
     image, draw = base_canvas(1500, 720)
     title = "Диаграмма"
     labels: list[str] = []
-    values: list[float] = []
     for raw in code:
         line = raw.strip()
         if line.startswith("title "):
             title = line[6:].strip().strip('"')
         elif line.startswith("x-axis "):
-            labels = re.findall(r'"([^"]+)"', line)
-        elif line.startswith("bar "):
-            values = [float(item) for item in re.findall(r"-?\d+(?:\.\d+)?", line)]
+            labels = parse_xychart_labels(line)
+    values, line_values = parse_xychart_series(code)
+    all_values = [*values, *line_values]
     title_font = load_font(26, bold=True)
     title_width, _ = text_size(draw, title, title_font)
     draw.text(((1500 - title_width) / 2, 36), title, font=title_font, fill="black")
     chart = (170, 120, 1430, 610)
     draw.line([(chart[0], chart[3]), (chart[2], chart[3])], fill="black", width=2)
     draw.line([(chart[0], chart[1]), (chart[0], chart[3])], fill="black", width=2)
-    if not values:
+    if not all_values:
         image.save(path)
         return
-    min_value = min(0, min(values))
-    max_value = max(0, max(values))
+    min_value = min(0, min(all_values))
+    max_value = max(0, max(all_values))
     span = max(1, max_value - min_value)
     zero_y = chart[3] - ((0 - min_value) / span) * (chart[3] - chart[1])
     draw.line([(chart[0], zero_y), (chart[2], zero_y)], fill="black", width=1)
@@ -498,29 +724,47 @@ def render_xychart(code: list[str], path: Path) -> None:
         label = str(round(value, 1)).rstrip("0").rstrip(".")
         label_width, label_height = text_size(draw, label, font)
         draw.text((chart[0] - 18 - label_width, y - label_height / 2), label, font=font, fill="black")
-    bar_gap = 28
-    bar_width = (chart[2] - chart[0] - bar_gap * (len(values) + 1)) / len(values)
+    chart_width = chart[2] - chart[0]
+    item_count = max(len(values), len(line_values), len(labels), 1)
+    bar_gap = min(28, max(2, chart_width / (item_count * 6)))
+    bar_width = max(1, (chart_width - bar_gap * (item_count + 1)) / item_count)
     for i, value in enumerate(values):
         x1 = chart[0] + bar_gap + i * (bar_width + bar_gap)
-        x2 = x1 + bar_width
+        x2 = min(chart[2], x1 + bar_width)
+        if x1 >= chart[2]:
+            break
         y = chart[3] - ((value - min_value) / span) * (chart[3] - chart[1])
         y1, y2 = sorted([zero_y, y])
         draw.rectangle((x1, y1, x2, y2), fill="#eeeeee", outline="black", width=1)
         label = labels[i] if i < len(labels) else str(i + 1)
-        for j, part in enumerate(wrap_text(draw, label, font, int(bar_width) + 18)):
-            w, _ = text_size(draw, part, font)
-            draw.text((x1 + (bar_width - w) / 2, chart[3] + 16 + j * 22), part, font=font, fill="black")
-        value_label = str(value).rstrip("0").rstrip(".")
-        value_width, _ = text_size(draw, value_label, font)
-        draw.text((x1 + (bar_width - value_width) / 2, y1 - 30), value_label, font=font, fill="black")
+        if bar_width >= 12:
+            for j, part in enumerate(wrap_text(draw, label, font, int(bar_width) + 18)):
+                w, _ = text_size(draw, part, font)
+                draw.text((x1 + (bar_width - w) / 2, chart[3] + 16 + j * 22), part, font=font, fill="black")
+            value_label = str(value).rstrip("0").rstrip(".")
+            value_width, _ = text_size(draw, value_label, font)
+            draw.text((x1 + (bar_width - value_width) / 2, y1 - 30), value_label, font=font, fill="black")
+    if line_values:
+        points = []
+        for i, value in enumerate(line_values):
+            x = chart[0] + bar_gap + i * (bar_width + bar_gap) + bar_width / 2
+            if x > chart[2]:
+                break
+            y = chart[3] - ((value - min_value) / span) * (chart[3] - chart[1])
+            points.append((x, y))
+        if len(points) >= 2:
+            draw.line(points, fill="black", width=3)
+        for x, y in points:
+            radius = 5
+            draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill="black")
     image.save(path)
 
 
 def cleanup_mermaid_dir() -> None:
     if not config.MERMAID_DIR.exists():
         return
-    names = {"puppeteer-config.json", "mermaid-config.json"}
+    generated = re.compile(r"diagram_\d+\.(?:mmd|png)$|diagram_\d+_(?:puppeteer|mermaid)-config\.json$")
     for path in config.MERMAID_DIR.iterdir():
-        if path.name in names or path.name.startswith("diagram_"):
+        if generated.fullmatch(path.name):
             if path.is_file():
                 path.unlink()
