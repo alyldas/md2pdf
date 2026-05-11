@@ -63,20 +63,18 @@ def render_mermaid_image(code: list[str]) -> Path | None:
     config.MERMAID_COUNTER += 1
     config.MERMAID_DIR.mkdir(parents=True, exist_ok=True)
     kind = next((line.strip() for line in code if line.strip()), "")
-    if kind.startswith("xychart"):
-        path = config.MERMAID_DIR / f"diagram_{config.MERMAID_COUNTER:02d}.png"
-        render_xychart(code, path)
-        crop_mermaid_png(path)
-        return path
-    if kind.startswith("sequenceDiagram"):
-        path = config.MERMAID_DIR / f"diagram_{config.MERMAID_COUNTER:02d}.png"
-        render_sequence(code, path)
-        crop_mermaid_png(path, bottom_padding=260)
-        return path
     real_rendered = try_render_mermaid_with_cli(code, config.MERMAID_COUNTER)
     if real_rendered:
         return real_rendered
     path = config.MERMAID_DIR / f"diagram_{config.MERMAID_COUNTER:02d}.png"
+    if kind.startswith("xychart"):
+        render_xychart(code, path)
+        crop_mermaid_png(path)
+        return path
+    if kind.startswith("sequenceDiagram"):
+        render_sequence(code, path)
+        crop_mermaid_png(path, bottom_padding=260)
+        return path
     if kind.startswith("stateDiagram"):
         render_state(code, path)
     elif kind.startswith("flowchart"):

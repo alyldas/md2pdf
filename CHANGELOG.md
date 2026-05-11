@@ -8,6 +8,13 @@
 
 - Nothing yet.
 
+## [1.0.2] - 2026-05-11
+
+### Fixed
+
+- Mermaid CLI is now the primary renderer for every Mermaid block type.
+- Release builds now run Mermaid rendering in strict mode so broken primary rendering cannot publish degraded PDF artifacts.
+
 ## [1.0.1] - 2026-05-11
 
 ### Changed

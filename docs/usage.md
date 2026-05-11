@@ -27,7 +27,7 @@ npm run example
 
 ## Mermaid behavior
 
-The converter first tries built-in renderers for diagram types that need stable black-and-white output. For other supported diagrams it tries Mermaid CLI and uses a simple built-in renderer when the browser backend fails.
+The converter first tries Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`. For supported diagram families, it uses a simple built-in renderer only when Mermaid CLI is unavailable or fails outside strict mode.
 
 Use strict mode when CI should fail on Mermaid CLI errors:
 

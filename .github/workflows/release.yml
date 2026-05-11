@@ -36,9 +36,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
           npm ci
+          npx puppeteer browsers install chrome
 
       - name: Run checks
-        run: npm run check
+        run: npm run check:strict
 
       - name: Build Python distributions
         run: python -m build

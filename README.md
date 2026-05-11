@@ -112,10 +112,9 @@ Complex Markdown extensions are not implemented: nested lists, footnotes, raw HT
 
 Mermaid blocks are rendered in this order:
 
-1. Specialized built-in renderers for `xychart-beta` and `sequenceDiagram`.
-2. Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`.
-3. Built-in renderers for supported diagram families.
-4. Plain code block output when the diagram type is unsupported and no renderer succeeds.
+1. Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`.
+2. Built-in renderers for supported diagram families when Mermaid CLI is unavailable or fails outside strict mode.
+3. Plain code block output when the diagram type is unsupported and no renderer succeeds.
 
 Supported built-in families:
 

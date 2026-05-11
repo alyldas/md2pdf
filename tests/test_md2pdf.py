@@ -22,7 +22,7 @@ def test_versions_are_in_sync() -> None:
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
 
-    assert pyproject["project"]["version"] == config.VERSION == "1.0.1"
+    assert pyproject["project"]["version"] == config.VERSION == "1.0.2"
     assert package["version"] == config.VERSION
     assert lock["version"] == config.VERSION
     assert lock["packages"][""]["version"] == config.VERSION
@@ -168,6 +168,27 @@ def test_mermaid_cli_failure_uses_builtin_renderer(monkeypatch: pytest.MonkeyPat
     path = mermaid.render_mermaid_image(["flowchart LR", '  A["Markdown"] --> B["PDF"]'])
 
     assert path is not None
+    assert path.exists()
+
+
+def test_mermaid_cli_is_primary_for_sequence_diagrams(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(config, "MERMAID_DIR", tmp_path / ".md2pdf" / "mermaid")
+    monkeypatch.setattr(config, "MERMAID_COUNTER", 0)
+
+    def fake_cli_render(code: list[str], index: int) -> Path:
+        path = config.MERMAID_DIR / f"diagram_{index:02d}.png"
+        path.write_bytes(b"png")
+        return path
+
+    def fail_builtin(*args, **kwargs):  # noqa: ANN002, ANN003
+        pytest.fail("built-in sequence renderer should not run when Mermaid CLI succeeds")
+
+    monkeypatch.setattr(mermaid, "try_render_mermaid_with_cli", fake_cli_render)
+    monkeypatch.setattr(mermaid, "render_sequence", fail_builtin)
+
+    path = mermaid.render_mermaid_image(["sequenceDiagram", "  A->>B: ok"])
+
+    assert path == config.MERMAID_DIR / "diagram_01.png"
     assert path.exists()
 
 
