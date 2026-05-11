@@ -1,15 +1,27 @@
 {
   "name": "md2pdf",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": false,
   "description": "Markdown to ГОСТ-style PDF converter with Mermaid support.",
   "license": "MIT",
-  "scripts": {
-    "pdf": "python3 src/md2pdf.py README.md README.pdf",
-    "example": "python3 src/md2pdf.py examples/example.md examples/example.pdf"
+  "engines": {
+    "node": ">=20"
   },
-  "devDependencies": {
+  "keywords": [
+    "markdown",
+    "pdf",
+    "gost",
+    "mermaid"
+  ],
+  "scripts": {
+    "pdf": "PYTHONPATH=src python3 -m md2pdf README.md README.pdf",
+    "example": "PYTHONPATH=src python3 -m md2pdf examples/example.md examples/example.pdf",
+    "lint": "python3 -m ruff check .",
+    "test": "python3 -m pytest -q",
+    "dist": "python3 -m build",
+    "check": "npm run lint && npm run test && npm run pdf && npm run example"
+  },
+  "dependencies": {
     "@mermaid-js/mermaid-cli": "^11.14.0"
   }
 }
-

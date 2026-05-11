@@ -4,4 +4,12 @@ node_modules/
 .md2pdf/
 __pycache__/
 *.pyc
-
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+coverage.xml
+.coverage
+.idea/
+.vscode/

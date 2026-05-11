@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "md2pdf-gost"
+version = "1.0.0"
+description = "Markdown to GOST-style A4 PDF converter with Mermaid support."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  { name = "md2pdf maintainers" }
+]
+keywords = ["markdown", "pdf", "gost", "mermaid", "reportlab"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Documentation",
+  "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+  "Pillow>=10,<13",
+  "reportlab>=4.2,<5",
+]
+
+[project.urls]
+Homepage = "https://github.com/alyldas/md2pdf"
+Repository = "https://github.com/alyldas/md2pdf"
+Issues = "https://github.com/alyldas/md2pdf/issues"
+Changelog = "https://github.com/alyldas/md2pdf/blob/main/CHANGELOG.md"
+
+[project.scripts]
+md2pdf = "md2pdf.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "build>=1,<2",
+  "pypdf>=5,<7",
+  "pytest>=8,<9",
+  "ruff>=0.5,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/md2pdf"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

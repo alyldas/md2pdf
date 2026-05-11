@@ -1,90 +1,185 @@
 # md2pdf
 
-`md2pdf` — утилита для сборки Markdown-документов в PDF A4 portrait с оформлением, близким к требованиям ГОСТ Р 7.32: Times New Roman, кегль 14, межстрочный интервал 1,5, абзацный отступ 1,25 см, простые таблицы и нижняя нумерация страниц.
+`md2pdf` converts Markdown files into A4 portrait PDF documents with a restrained layout close to ГОСТ Р 7.32 conventions: serif font, 14 pt body text, 1.5 line spacing, 1.25 cm paragraph indent, simple tables, code blocks, Mermaid diagrams and centered page numbers.
 
-## 1. Возможности
+The project is intentionally small. It is useful for course work, project reports, internal technical notes and other documents where predictable PDF output matters more than full Markdown compatibility.
 
-| Возможность | Как работает | Примечание |
+## Features
+
+| Feature | Behavior | Notes |
 | --- | --- | --- |
-| Основной текст | Times New Roman, 14 pt, выравнивание по ширине | Абзацный отступ 1,25 см |
-| Заголовки | Times New Roman Bold, 14 pt | Первый заголовок центрируется |
-| Списки | Маркер `–`, отступ 1,25 см слева | Между маркером и текстом ставится пробел |
-| Таблицы | Простая сетка, без декоративных цветов | Минимальный кегль 11 pt |
-| Mermaid | Рендерит диаграммы в PNG и вставляет в PDF | Для `sequenceDiagram` и `xychart` используется упрощенный черно-белый рендер |
-| Страницы | A4, portrait, поля 30/10/20/20 мм | Номер страницы снизу по центру |
+| Text | Serif font, 14 pt, justified paragraphs | First-line indent is 1.25 cm |
+| Headings | Bold serif headings | The first H1 is centered as a title |
+| Lists | Dash marker with a fixed left indent | Supports flat `- ` lists |
+| Tables | Plain grid with repeated header rows | Best for simple pipe tables |
+| Code blocks | Monospace-style framed block using the document font | Long lines are preserved |
+| Mermaid | Renders diagrams to PNG before inserting into PDF | Built-in renderer covers common diagram types |
+| Pages | A4 portrait with 30/10/20/20 mm margins | Page number is centered in the footer |
 
-## 2. Установка
+## Requirements
 
-Требуется Python 3.11+ и Node.js. Mermaid CLI ставится как npm-зависимость проекта.
+- Python 3.11 or newer.
+- Node.js 20 or newer if you want Mermaid CLI rendering.
+- A compatible serif font:
+  - Times New Roman on macOS;
+  - Times New Roman in the user font folder on macOS;
+  - Microsoft Core Fonts or DejaVu Serif on Linux.
+
+The converter can still render supported Mermaid diagrams when Mermaid CLI is unavailable or when its browser backend fails. Set `MD2PDF_STRICT_MERMAID=1` if you want Mermaid CLI failures to stop the build.
+
+## Installation
+
+For regular use from a checkout:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+Install Mermaid CLI support:
 
 ```bash
 npm install
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
 ```
 
-## 3. Использование
-
-Сборка README в PDF:
+For development, install the extra tools:
 
 ```bash
-python3 src/md2pdf.py README.md README.pdf
+python -m pip install -e ".[dev]"
 ```
 
-Сборка другого документа:
+Check local dependencies:
 
 ```bash
-python3 src/md2pdf.py examples/example.md examples/example.pdf
+md2pdf --check-deps
 ```
 
-## 4. Пример Mermaid
+## Usage
 
-```mermaid
-flowchart LR
-  A["Markdown"] --> B["Парсер блоков"]
-  B --> C["Таблицы и списки"]
-  B --> D["Mermaid PNG"]
-  C --> E["PDF A4"]
-  D --> E
+Build the repository README:
+
+```bash
+PYTHONPATH=src python3 -m md2pdf README.md README.pdf
 ```
 
-## 5. Пример последовательности
+Build the example document:
 
-```mermaid
-sequenceDiagram
-  participant U as Пользователь
-  participant C as Конвертер
-  participant M as Mermaid CLI
-  U->>C: Запускает сборку
-  C->>M: Отправляет Mermaid-блок
-  M-->>C: Возвращает PNG
-  C-->>U: Сохраняет PDF
+```bash
+PYTHONPATH=src python3 -m md2pdf examples/example.md examples/example.pdf
 ```
 
-## 6. Пример диаграммы шкал
+After editable installation, the console entry point is available:
 
-```mermaid
-xychart-beta
-  title "Пример черно-белой столбчатой диаграммы"
-  x-axis ["Текст", "Таблицы", "Списки", "Схемы"]
-  y-axis "Оценка" 0 --> 10
-  bar [8, 7, 9, 8]
+```bash
+md2pdf README.md README.pdf
 ```
 
-## 7. Ограничения
+The input and output arguments are optional. Without arguments, the tool reads `README.md` and writes `README.pdf` in the current directory.
 
-Проект не является полноценным Markdown-движком. Он покрывает практичные блоки, которые чаще всего нужны для учебной, проектной и ВКР-документации: заголовки, абзацы, списки, таблицы, блоки кода и Mermaid.
+Useful options:
 
-Если документ использует сложный HTML внутри Markdown, вложенные списки, footnotes или нестандартные расширения Markdown, их лучше предварительно упростить.
+```bash
+md2pdf --version
+md2pdf --check-deps
+md2pdf input.md output.pdf --strict-mermaid
+md2pdf input.md output.pdf --temp-dir .md2pdf/custom
+md2pdf input.md output.pdf --font-size 13 --line-height 1.45
+md2pdf input.md output.pdf --margins 30,10,20,20
+md2pdf input.md output.pdf --quiet
+```
 
-## 8. Структура проекта
+## Supported Markdown
 
-| Путь | Назначение |
+The parser supports the practical subset used by this project:
+
+- headings from `#` to `######`;
+- paragraphs separated by blank lines;
+- flat unordered lists written as `- item`;
+- simple pipe tables;
+- fenced code blocks;
+- fenced Mermaid blocks.
+
+Complex Markdown extensions are not implemented: nested lists, footnotes, raw HTML blocks, escaped table pipes and advanced link syntax should be simplified before conversion.
+
+## Mermaid
+
+Mermaid blocks are rendered in this order:
+
+1. Specialized built-in renderers for `xychart-beta` and `sequenceDiagram`.
+2. Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`.
+3. Built-in renderers for supported diagram families.
+4. Plain code block output when the diagram type is unsupported and no renderer succeeds.
+
+Supported built-in families:
+
+- `flowchart`;
+- `sequenceDiagram`;
+- `stateDiagram`;
+- `xychart-beta`.
+
+## Development
+
+More details are available in [docs/development.md](docs/development.md). Usage examples are collected in [docs/usage.md](docs/usage.md).
+
+Run the local quality gate:
+
+```bash
+python -m ruff check .
+python -m pytest -q
+npm run pdf
+npm run example
+```
+
+The npm shortcut runs the same checks:
+
+```bash
+npm run check
+```
+
+Project files:
+
+| Path | Purpose |
 | --- | --- |
-| `src/md2pdf.py` | Основной CLI-скрипт |
-| `README.md` | Документация и одновременно пример входного файла |
-| `README.pdf` | PDF, собранный из README |
-| `examples/example.md` | Отдельный пример Markdown-документа |
-| `prompts/polish-script.md` | Промпт для следующего этапа улучшения проекта |
+| `src/md2pdf/config.py` | Shared defaults, version, fonts and runtime flags |
+| `src/md2pdf/markdown.py` | Markdown cleanup, tables and block helpers |
+| `src/md2pdf/mermaid.py` | Mermaid CLI integration and built-in renderers |
+| `src/md2pdf/pdf.py` | ReportLab PDF generation |
+| `src/md2pdf/core.py` | Compatibility facade for older imports |
+| `src/md2pdf/cli.py` | CLI argument parsing |
+| `src/md2pdf/__main__.py` | `python -m md2pdf` entry point |
+| `tests/test_md2pdf.py` | Unit and smoke tests |
+| `examples/example.md` | Example input document |
+| `examples/example.pdf` | Generated example output |
+| `README.pdf` | Generated README output |
+| `CONTRIBUTING.md` | Contributor guide |
+| `SECURITY.md` | Security policy |
+| `CHANGELOG.md` | Release notes |
+| `docs/usage.md` | CLI usage notes |
+| `docs/development.md` | Development workflow |
+| `docs/release.md` | Release workflow |
 
+PDF artifacts are committed intentionally. Update `README.pdf` and `examples/example.pdf` only when README, examples or rendering behavior changes.
+
+## Troubleshooting
+
+### Font not found
+
+Install Times New Roman, Microsoft Core Fonts or DejaVu Serif. The tool checks common macOS and Linux font paths.
+
+### Mermaid CLI fails to launch a browser
+
+This can happen in sandboxed environments or CI runners. By default, the converter uses built-in renderers for supported diagram types. Use `--strict-mermaid` to fail fast instead.
+
+### Diagram layout differs from Mermaid CLI
+
+Built-in renderers are intentionally simple black-and-white renderers. They keep the PDF build usable, but they are not a complete Mermaid implementation.
+
+### Markdown output is missing advanced formatting
+
+The converter is not a full Markdown engine. Simplify unsupported Markdown features or add a focused parser feature with tests.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
