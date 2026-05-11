@@ -58,7 +58,8 @@ def flush_code(
     if not code:
         return
     options = options or PdfOptions()
-    if language == "mermaid":
+    language_name = language.split(maxsplit=1)[0].lower() if language.strip() else ""
+    if language_name == "mermaid":
         image_path = render_mermaid_image(code)
         if image_path:
             with PILImage.open(image_path) as rendered:
@@ -225,16 +226,30 @@ def build_pdf(input_path: Path, output_path: Path, options: PdfOptions | None = 
     table: list[list[str]] = []
     in_code = False
     code_lang = ""
+    code_fence_char = ""
+    code_fence_len = 0
     first_heading = True
 
     for raw_line in input_path.read_text(encoding="utf-8").splitlines():
         line = raw_line.rstrip()
+        fence = re.match(r"^ {0,3}(`{3,}|~{3,})\s*(.*)$", line)
+        if fence and fence.group(1).startswith("`") and "`" in fence.group(2):
+            fence = None
 
-        if line.startswith("```"):
+        if fence:
             if in_code:
-                flush_code(story, code, styles, code_lang, available_width, options)
-                in_code = False
-                code_lang = ""
+                marker = fence.group(1)
+                is_closing_fence = (
+                    marker[0] == code_fence_char and len(marker) >= code_fence_len and not fence.group(2).strip()
+                )
+                if is_closing_fence:
+                    flush_code(story, code, styles, code_lang, available_width, options)
+                    in_code = False
+                    code_lang = ""
+                    code_fence_char = ""
+                    code_fence_len = 0
+                else:
+                    code.append(line)
             else:
                 flush_paragraph(story, paragraph, styles["body"])
                 flush_bullets(story, bullets, styles, available_width)
@@ -242,7 +257,9 @@ def build_pdf(input_path: Path, output_path: Path, options: PdfOptions | None = 
                     add_table(story, table, styles, available_width)
                     table.clear()
                 in_code = True
-                code_lang = line.strip("`").strip()
+                code_fence_char = fence.group(1)[0]
+                code_fence_len = len(fence.group(1))
+                code_lang = fence.group(2).strip()
             continue
 
         if in_code:
@@ -287,10 +304,13 @@ def build_pdf(input_path: Path, output_path: Path, options: PdfOptions | None = 
             continue
 
         if line.strip().startswith("|") and "|" in line.strip()[1:]:
+            if is_table_divider(line):
+                if table:
+                    continue
+                paragraph.append(line)
+                continue
             flush_paragraph(story, paragraph, styles["body"])
             flush_bullets(story, bullets, styles, available_width)
-            if is_table_divider(line):
-                continue
             table.append(split_table_row(line))
             continue
 

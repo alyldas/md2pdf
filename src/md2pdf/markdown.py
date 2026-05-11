@@ -9,15 +9,99 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
 
+def find_unescaped(text: str, char: str, start: int) -> int:
+    escaped = False
+    for index in range(start, len(text)):
+        current = text[index]
+        if escaped:
+            escaped = False
+            continue
+        if current == "\\":
+            escaped = True
+            continue
+        if current == char:
+            return index
+    return -1
+
+
+def is_escaped(text: str, index: int) -> bool:
+    backslashes = 0
+    cursor = index - 1
+    while cursor >= 0 and text[cursor] == "\\":
+        backslashes += 1
+        cursor -= 1
+    return backslashes % 2 == 1
+
+
+def unescape_markdown_text(text: str) -> str:
+    return re.sub(r"\\([\\`*_{}\[\]()#+\-.!|>])", r"\1", text)
+
+
+def strip_markdown_targets(text: str, image: bool) -> str:
+    opener = "![" if image else "["
+    result = []
+    index = 0
+    while index < len(text):
+        start = text.find(opener, index)
+        if start == -1:
+            result.append(text[index:])
+            break
+        if is_escaped(text, start):
+            result.append(text[index : start + len(opener)])
+            index = start + len(opener)
+            continue
+        if not image and start > 0 and text[start - 1] == "!":
+            result.append(text[index : start + len(opener)])
+            index = start + len(opener)
+            continue
+        label_start = start + len(opener)
+        label_end = find_unescaped(text, "]", label_start)
+        if label_end == -1 or label_end + 1 >= len(text) or text[label_end + 1] != "(":
+            result.append(text[index : start + len(opener)])
+            index = start + len(opener)
+            continue
+
+        depth = 1
+        target_index = label_end + 2
+        escaped = False
+        while target_index < len(text) and depth:
+            char = text[target_index]
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+            target_index += 1
+        if depth:
+            result.append(text[index : start + len(opener)])
+            index = start + len(opener)
+            continue
+        result.append(text[index:start])
+        result.append(unescape_markdown_text(text[label_start:label_end]))
+        index = target_index
+    return "".join(result)
+
+
 def clean_inline(text: str) -> str:
     text = text.strip()
-    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
-    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
+    text = strip_markdown_targets(text, image=True)
+    text = strip_markdown_targets(text, image=False)
     text = text.replace("`", "")
-    text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
-    text = re.sub(r"__([^_]+)__", r"<b>\1</b>", text)
+    bold_parts: list[str] = []
+
+    def keep_bold(match: re.Match[str]) -> str:
+        token = f"\x00MD2PDF_BOLD_{len(bold_parts)}\x00"
+        bold_parts.append(f"<b>{html.escape(match.group(1), quote=False)}</b>")
+        return token
+
+    text = re.sub(r"\*\*([^*]+)\*\*", keep_bold, text)
+    text = re.sub(r"__([^_]+)__", keep_bold, text)
     safe = html.escape(text, quote=False)
-    safe = safe.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+    for index, bold in enumerate(bold_parts):
+        safe = safe.replace(f"\x00MD2PDF_BOLD_{index}\x00", bold)
     return safe
 
 
@@ -31,7 +115,38 @@ def split_table_row(line: str) -> list[str]:
         line = line[1:]
     if line.endswith("|"):
         line = line[:-1]
-    return [cell.strip() for cell in line.split("|")]
+    cells = []
+    current = []
+    in_code = False
+    bracket_depth = 0
+    escaped = False
+    for char in line:
+        if escaped:
+            if char != "|":
+                current.append("\\")
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == "`":
+            in_code = not in_code
+            current.append(char)
+            continue
+        if not in_code and char == "[":
+            bracket_depth += 1
+        elif not in_code and char == "]" and bracket_depth:
+            bracket_depth -= 1
+        if char == "|" and not in_code and bracket_depth == 0:
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if escaped:
+        current.append("\\")
+    cells.append("".join(current).strip())
+    return cells
 
 
 def is_table_divider(line: str) -> bool:
@@ -104,4 +219,3 @@ def flush_bullets(story: list, bullets: list[str], styles: dict, available_width
         story.append(Paragraph(f"–&nbsp;&nbsp;{clean_inline(item)}", styles["list_body"]))
     story.append(Spacer(1, 0.5 * mm))
     bullets.clear()
-
