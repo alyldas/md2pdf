@@ -60,7 +60,19 @@ The release workflow runs checks, builds wheel and source distributions, and att
 
 ## PyPI
 
-PyPI publication is intentionally not automatic yet. Publish manually only after verifying:
+PyPI publication uses Trusted Publishing through GitHub Actions. The PyPI project must trust this exact publisher:
+
+- project: `md2pdf-gost`;
+- owner: `alyldas`;
+- repository: `md2pdf`;
+- workflow: `release.yml`;
+- environment: `pypi`.
+
+The GitHub `pypi` environment is used by the publish job. It may have required reviewers enabled if releases should require manual approval before upload.
+
+Do not tag a PyPI-publishing release until the trusted publisher is configured on PyPI. Without that PyPI-side trust record, the GitHub release will build artifacts, but the PyPI upload job will fail authorization.
+
+Publish only after verifying:
 
 - the GitHub release artifacts;
 - the package version;
