@@ -19,6 +19,8 @@ python -m build
 md2pdf --version
 ```
 
+Linux release runners install `fonts-liberation` so public PDF artifacts use Liberation Serif instead of the wider DejaVu Serif fallback.
+
 Render the public artifacts:
 
 ```bash

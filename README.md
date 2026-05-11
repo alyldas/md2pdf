@@ -13,7 +13,7 @@ The project is intentionally small. It is useful for course work, project report
 
 | Feature | Behavior | Notes |
 | --- | --- | --- |
-| Text | Serif font, 14 pt, justified paragraphs | First-line indent is 1.25 cm |
+| Text | Serif font, 14 pt, readable left-aligned paragraphs | First-line indent is 1.25 cm |
 | Headings | Bold serif headings | The first H1 is centered as a title |
 | Lists | Dash marker with a fixed left indent | Supports flat `- ` lists |
 | Tables | Plain grid with repeated header rows | Best for simple pipe tables |
@@ -28,7 +28,7 @@ The project is intentionally small. It is useful for course work, project report
 - A compatible serif font:
   - Times New Roman on macOS;
   - Times New Roman in the user font folder on macOS;
-  - Microsoft Core Fonts or DejaVu Serif on Linux.
+  - Microsoft Core Fonts, Liberation Serif or DejaVu Serif on Linux.
 
 The converter can still render supported Mermaid diagrams when Mermaid CLI is unavailable or when its browser backend fails. Set `MD2PDF_STRICT_MERMAID=1` if you want Mermaid CLI failures to stop the build.
 

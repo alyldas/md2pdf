@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image as PILImage
 from reportlab import rl_config
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
@@ -173,7 +173,7 @@ def build_pdf(input_path: Path, output_path: Path, options: PdfOptions | None = 
             fontName=regular,
             fontSize=options.font_size,
             leading=leading,
-            alignment=TA_JUSTIFY,
+            alignment=TA_LEFT,
             firstLineIndent=PARAGRAPH_INDENT,
             spaceAfter=0,
         ),
@@ -183,7 +183,7 @@ def build_pdf(input_path: Path, output_path: Path, options: PdfOptions | None = 
             fontName=regular,
             fontSize=options.font_size,
             leading=leading,
-            alignment=TA_JUSTIFY,
+            alignment=TA_LEFT,
             leftIndent=PARAGRAPH_INDENT,
             firstLineIndent=0,
             spaceAfter=0,

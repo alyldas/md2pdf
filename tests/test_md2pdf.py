@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from PIL import ImageFont
 from pypdf import PdfReader
+from reportlab.lib.enums import TA_LEFT
 
 import md2pdf as package
 import md2pdf.cli as cli
@@ -22,7 +23,7 @@ def test_versions_are_in_sync() -> None:
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
 
-    assert pyproject["project"]["version"] == config.VERSION == "1.0.3"
+    assert pyproject["project"]["version"] == config.VERSION == "1.0.4"
     assert package["version"] == config.VERSION
     assert lock["version"] == config.VERSION
     assert lock["packages"][""]["version"] == config.VERSION
@@ -106,6 +107,34 @@ def test_cli_passes_layout_options(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         diagram_max_height_mm=90,
         margins_mm=(25, 12, 18, 22),
     )
+
+
+def test_body_text_is_not_force_justified(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(pdf, "register_fonts", lambda: ("Helvetica", "Helvetica-Bold"))
+    captured = {}
+
+    class FakeDoc:
+        page = 1
+
+        def __init__(self, *args, **kwargs):  # noqa: ANN002, ANN003
+            pass
+
+        def build(self, story, *args, **kwargs):  # noqa: ANN002, ANN003
+            captured["story"] = story
+
+    monkeypatch.setattr(pdf, "SimpleDocTemplate", FakeDoc)
+
+    source = tmp_path / "text.md"
+    target = tmp_path / "text.pdf"
+    source.write_text("# Title\n\nOne two three four five six.\n\n- Item one.\n", encoding="utf-8")
+
+    pdf.build_pdf(source, target)
+
+    paragraphs = [item for item in captured["story"] if item.__class__.__name__ == "Paragraph"]
+    body = next(item for item in paragraphs if "One two three" in item.getPlainText())
+    bullet = next(item for item in paragraphs if "Item one" in item.getPlainText())
+    assert body.style.alignment == TA_LEFT
+    assert bullet.style.alignment == TA_LEFT
 
 
 def test_cli_check_deps(capsys: pytest.CaptureFixture[str]) -> None:
