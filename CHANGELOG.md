@@ -8,6 +8,13 @@
 
 - Nothing yet.
 
+## [1.0.5] - 2026-05-11
+
+### Fixed
+
+- Linux font discovery now checks both Liberation Serif install locations used by Ubuntu packages.
+- CI and release runners install both Liberation font packages before building public PDF artifacts.
+
 ## [1.0.4] - 2026-05-11
 
 ### Fixed

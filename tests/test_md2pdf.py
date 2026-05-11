@@ -23,10 +23,24 @@ def test_versions_are_in_sync() -> None:
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
 
-    assert pyproject["project"]["version"] == config.VERSION == "1.0.4"
+    assert pyproject["project"]["version"] == config.VERSION == "1.0.5"
     assert package["version"] == config.VERSION
     assert lock["version"] == config.VERSION
     assert lock["packages"][""]["version"] == config.VERSION
+
+
+def test_linux_liberation_serif_is_preferred_before_dejavu() -> None:
+    regular = config.FONT_CANDIDATES["regular"]
+    bold = config.FONT_CANDIDATES["bold"]
+
+    assert "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf" in regular
+    assert "/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf" in regular
+    assert regular.index("/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf") < regular.index(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
+    )
+    assert bold.index("/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf") < bold.index(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
+    )
 
 
 def test_public_package_facade_exports_core_helpers() -> None:

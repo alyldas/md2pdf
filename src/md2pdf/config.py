@@ -9,7 +9,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 ROOT = Path.cwd()
 DEFAULT_INPUT = ROOT / "README.md"
 DEFAULT_OUTPUT = ROOT / "README.pdf"
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
 FONT_REGULAR = ""
 FONT_BOLD = ""
@@ -18,6 +18,7 @@ FONT_CANDIDATES = {
         "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
         str(Path.home() / "Library/Fonts/Times New Roman.ttf"),
         "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
     ],
@@ -25,6 +26,7 @@ FONT_CANDIDATES = {
         "/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf",
         str(Path.home() / "Library/Fonts/Times New Roman Bold.ttf"),
         "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman_Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
     ],
