@@ -1,6 +1,6 @@
 {
   "name": "md2pdf",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": false,
   "description": "Markdown to ГОСТ-style PDF converter with Mermaid support.",
   "license": "MIT",

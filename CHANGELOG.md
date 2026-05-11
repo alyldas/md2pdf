@@ -8,6 +8,14 @@
 
 - Nothing yet.
 
+## [1.0.3] - 2026-05-11
+
+### Changed
+
+- README badges now use live GitHub Actions and Shields URLs.
+- Release workflow now publishes Python distributions to PyPI through Trusted Publishing.
+- Release documentation now records the PyPI Trusted Publisher settings.
+
 ## [1.0.2] - 2026-05-11
 
 ### Fixed
