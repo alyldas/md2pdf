@@ -1,0 +1,7 @@
+.DS_Store
+.venv/
+node_modules/
+.md2pdf/
+__pycache__/
+*.pyc
+

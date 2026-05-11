@@ -1,0 +1,15 @@
+{
+  "name": "md2pdf",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Markdown to ГОСТ-style PDF converter with Mermaid support.",
+  "license": "MIT",
+  "scripts": {
+    "pdf": "python3 src/md2pdf.py README.md README.pdf",
+    "example": "python3 src/md2pdf.py examples/example.md examples/example.pdf"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.14.0"
+  }
+}
+
