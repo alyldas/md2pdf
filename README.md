@@ -28,7 +28,8 @@ The project is intentionally small. It is useful for course work, project report
 - A compatible serif font:
   - Times New Roman on macOS;
   - Times New Roman in the user font folder on macOS;
-  - Microsoft Core Fonts, Liberation Serif or DejaVu Serif on Linux.
+  - Microsoft Core Fonts or Liberation Serif on Linux;
+  - DejaVu Serif as the last Linux option when narrower serif fonts are not installed.
 
 The converter can still render supported Mermaid diagrams when Mermaid CLI is unavailable or when its browser backend fails. Set `MD2PDF_STRICT_MERMAID=1` if you want Mermaid CLI failures to stop the build.
 
@@ -113,7 +114,7 @@ Complex Markdown extensions are not implemented: nested lists, footnotes, raw HT
 Mermaid blocks are rendered in this order:
 
 1. Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`.
-2. Built-in renderers for supported diagram families when Mermaid CLI is unavailable or fails outside strict mode.
+2. Built-in renderers for supported diagram families only when Mermaid CLI is unavailable or fails outside strict mode.
 3. Plain code block output when the diagram type is unsupported and no renderer succeeds.
 
 Supported built-in families:
@@ -170,7 +171,7 @@ PDF artifacts are committed intentionally. Update `README.pdf` and `examples/exa
 
 ### Font not found
 
-Install Times New Roman, Microsoft Core Fonts or DejaVu Serif. The tool checks common macOS and Linux font paths.
+Install Times New Roman, Microsoft Core Fonts or Liberation Serif. DejaVu Serif is accepted as a last Linux option. The tool checks common macOS and Linux font paths.
 
 ### Mermaid CLI fails to launch a browser
 

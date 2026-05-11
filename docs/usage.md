@@ -27,7 +27,7 @@ npm run example
 
 ## Mermaid behavior
 
-The converter first tries Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`. For supported diagram families, it uses a simple built-in renderer only when Mermaid CLI is unavailable or fails outside strict mode.
+The primary Mermaid renderer is Mermaid CLI through the local `node_modules/.bin/mmdc` or a global `mmdc`. For supported diagram families, the simple built-in renderer is used only when Mermaid CLI is unavailable or fails outside strict mode.
 
 Use strict mode when CI should fail on Mermaid CLI errors:
 

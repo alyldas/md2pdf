@@ -20,7 +20,7 @@
 ### Fixed
 
 - Public PDF artifacts no longer force-justify body and list text, avoiding excessive word spacing.
-- CI and release runners install Liberation Serif so Linux-built PDFs use a narrower serif font before falling back to DejaVu Serif.
+- CI and release runners install Liberation Serif so Linux-built PDFs use a narrower serif font before considering DejaVu Serif.
 
 ## [1.0.3] - 2026-05-11
 
