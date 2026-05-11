@@ -8,6 +8,14 @@
 
 - Nothing yet.
 
+## [1.0.6] - 2026-05-11
+
+### Fixed
+
+- Hardened CLI validation and error reporting for invalid inputs and layout failures.
+- Improved Markdown parsing for links, images, tables, raw markup and fenced code blocks.
+- Expanded Mermaid rendering edge-case handling and regression coverage.
+
 ## [1.0.5] - 2026-05-11
 
 ### Fixed

@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path.cwd()
 DEFAULT_INPUT = ROOT / "README.md"
 DEFAULT_OUTPUT = ROOT / "README.pdf"
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 
 FONT_REGULAR = ""
 FONT_BOLD = ""
