@@ -187,12 +187,27 @@ def flush_code(story: list, code: list[str], styles: dict, language: str, availa
             story.append(Spacer(1, 3 * mm))
             code.clear()
             return
-    title = "Mermaid-диаграмма" if language == "mermaid" else "Блок кода"
-    block = [
-        Paragraph(title, styles["code_title"]),
-        Preformatted("\n".join(code), styles["code"]),
-    ]
-    story.append(KeepTogether(block))
+    block = Table(
+        [["", Preformatted("\n".join(code), styles["code"])]],
+        colWidths=[PARAGRAPH_INDENT, available_width - PARAGRAPH_INDENT],
+        hAlign="LEFT",
+    )
+    block.setStyle(
+        TableStyle(
+            [
+                ("BOX", (1, 0), (1, 0), 0.35, colors.HexColor("#666666")),
+                ("LEFTPADDING", (0, 0), (0, 0), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), 0),
+                ("TOPPADDING", (0, 0), (0, 0), 0),
+                ("BOTTOMPADDING", (0, 0), (0, 0), 0),
+                ("LEFTPADDING", (1, 0), (1, 0), 5),
+                ("RIGHTPADDING", (1, 0), (1, 0), 5),
+                ("TOPPADDING", (1, 0), (1, 0), 4),
+                ("BOTTOMPADDING", (1, 0), (1, 0), 4),
+            ]
+        )
+    )
+    story.append(KeepTogether([block]))
     story.append(Spacer(1, 3 * mm))
     code.clear()
 
@@ -699,7 +714,7 @@ def render_xychart(code: list[str], path: Path) -> None:
     title_font = load_font(26, bold=True)
     title_width, _ = text_size(draw, title, title_font)
     draw.text(((1500 - title_width) / 2, 36), title, font=title_font, fill="black")
-    chart = (130, 120, 1430, 610)
+    chart = (170, 120, 1430, 610)
     draw.line([(chart[0], chart[3]), (chart[2], chart[3])], fill="black", width=2)
     draw.line([(chart[0], chart[1]), (chart[0], chart[3])], fill="black", width=2)
     if not values:
@@ -710,9 +725,19 @@ def render_xychart(code: list[str], path: Path) -> None:
     span = max(1, max_value - min_value)
     zero_y = chart[3] - ((0 - min_value) / span) * (chart[3] - chart[1])
     draw.line([(chart[0], zero_y), (chart[2], zero_y)], fill="black", width=1)
+    font = load_font(18)
+    tick_count = 5
+    for tick_index in range(tick_count + 1):
+        value = min_value + span * tick_index / tick_count
+        y = chart[3] - ((value - min_value) / span) * (chart[3] - chart[1])
+        draw.line([(chart[0] - 9, y), (chart[0], y)], fill="black", width=2)
+        if tick_index not in (0, tick_count):
+            draw.line([(chart[0], y), (chart[2], y)], fill="#dddddd", width=1)
+        label = str(round(value, 1)).rstrip("0").rstrip(".")
+        label_width, label_height = text_size(draw, label, font)
+        draw.text((chart[0] - 18 - label_width, y - label_height / 2), label, font=font, fill="black")
     bar_gap = 28
     bar_width = (chart[2] - chart[0] - bar_gap * (len(values) + 1)) / len(values)
-    font = load_font(18)
     for i, value in enumerate(values):
         x1 = chart[0] + bar_gap + i * (bar_width + bar_gap)
         x2 = x1 + bar_width
@@ -760,8 +785,7 @@ def build_pdf(input_path: Path, output_path: Path) -> None:
         "list_body": ParagraphStyle("ListBodyRu", parent=base["BodyText"], fontName=regular, fontSize=14, leading=21, alignment=TA_JUSTIFY, leftIndent=PARAGRAPH_INDENT, firstLineIndent=0, spaceAfter=0),
         "table_header": ParagraphStyle("TableHeaderRu", parent=base["BodyText"], fontName=bold, fontSize=11, leading=13.2, textColor=colors.black),
         "table_cell": ParagraphStyle("TableCellRu", parent=base["BodyText"], fontName=regular, fontSize=11, leading=13.2, textColor=colors.black),
-        "code_title": ParagraphStyle("CodeTitleRu", parent=base["BodyText"], fontName=bold, fontSize=9, leading=11, textColor=colors.black, backColor=colors.white, borderPadding=2),
-        "code": ParagraphStyle("CodeRu", parent=base["Code"], fontName=regular, fontSize=10, leading=12, textColor=colors.black, backColor=colors.white, borderColor=colors.HexColor("#666666"), borderWidth=0.4, borderPadding=5),
+        "code": ParagraphStyle("CodeRu", parent=base["Code"], fontName=regular, fontSize=11, leading=14, leftIndent=0, rightIndent=0, firstLineIndent=0, textColor=colors.black, backColor=colors.white),
     }
 
     story: list = []
