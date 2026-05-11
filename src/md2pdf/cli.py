@@ -5,6 +5,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import cast
+from uuid import uuid4
 
 from . import config
 from .mermaid import cleanup_mermaid_dir
@@ -82,6 +83,8 @@ def main(argv: list[str] | None = None) -> int:
     previous_quiet = config.QUIET
     if args.temp_dir:
         config.set_mermaid_dir(args.temp_dir.resolve())
+    else:
+        config.set_mermaid_dir(previous_mermaid_dir / f"run-{os.getpid()}-{uuid4().hex[:8]}")
     config.set_quiet(args.quiet)
 
     previous_strict = os.environ.get("MD2PDF_STRICT_MERMAID")
@@ -102,6 +105,11 @@ def main(argv: list[str] | None = None) -> int:
         build_pdf(input_path, output_path, options)
         if not args.keep_temp:
             cleanup_mermaid_dir()
+            if not args.temp_dir and config.MERMAID_DIR.exists():
+                try:
+                    config.MERMAID_DIR.rmdir()
+                except OSError:
+                    pass
     except PermissionError as error:
         parser.exit(1, f"md2pdf: нет прав на чтение или запись: {error}\n")
     except RuntimeError as error:

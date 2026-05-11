@@ -43,6 +43,16 @@ def test_linux_liberation_serif_is_preferred_before_dejavu() -> None:
     )
 
 
+def test_pick_font_uses_first_existing_candidate(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    first = tmp_path / "LiberationSerif-Regular.ttf"
+    second = tmp_path / "DejaVuSerif.ttf"
+    first.touch()
+    second.touch()
+    monkeypatch.setitem(config.FONT_CANDIDATES, "regular", [str(first), str(second)])
+
+    assert config.pick_font("regular") == str(first)
+
+
 def test_public_package_facade_exports_core_helpers() -> None:
     assert package.clean_inline("**ok**") == "<b>ok</b>"
     assert package.main is main
@@ -57,6 +67,57 @@ def test_cli_main_builds_pdf(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
 
     assert main([str(source), str(target)]) == 0
     assert target.exists()
+
+
+def test_cli_uses_unique_default_mermaid_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    source = tmp_path / "cli.md"
+    source.write_text("# CLI\n\nBody text.\n", encoding="utf-8")
+    first_target = tmp_path / "first.pdf"
+    second_target = tmp_path / "second.pdf"
+    base_mermaid_dir = tmp_path / ".md2pdf" / "mermaid"
+    seen: list[Path] = []
+
+    monkeypatch.setattr(config, "MERMAID_DIR", base_mermaid_dir)
+
+    def fake_build_pdf(input_path: Path, output_path: Path, options: pdf.PdfOptions) -> None:
+        seen.append(config.MERMAID_DIR)
+        config.MERMAID_DIR.mkdir(parents=True)
+        output_path.write_bytes(b"%PDF-1.4\n")
+
+    monkeypatch.setattr(cli, "build_pdf", fake_build_pdf)
+
+    assert main([str(source), str(first_target)]) == 0
+    assert main([str(source), str(second_target)]) == 0
+    assert len(seen) == 2
+    assert seen[0] != seen[1]
+    assert seen[0].parent == base_mermaid_dir
+    assert seen[1].parent == base_mermaid_dir
+    assert not seen[0].exists()
+    assert not seen[1].exists()
+    assert config.MERMAID_DIR == base_mermaid_dir
+
+
+def test_cli_ignores_nonempty_default_temp_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    source = tmp_path / "cli.md"
+    target = tmp_path / "cli.pdf"
+    source.write_text("# CLI\n\nBody text.\n", encoding="utf-8")
+    base_mermaid_dir = tmp_path / ".md2pdf" / "mermaid"
+    seen: list[Path] = []
+
+    monkeypatch.setattr(config, "MERMAID_DIR", base_mermaid_dir)
+
+    def fake_build_pdf(input_path: Path, output_path: Path, options: pdf.PdfOptions) -> None:
+        seen.append(config.MERMAID_DIR)
+        config.MERMAID_DIR.mkdir(parents=True)
+        (config.MERMAID_DIR / "extra.log").write_text("debug", encoding="utf-8")
+        output_path.write_bytes(b"%PDF-1.4\n")
+
+    monkeypatch.setattr(cli, "build_pdf", fake_build_pdf)
+
+    assert main([str(source), str(target)]) == 0
+    assert target.exists()
+    assert seen[0].exists()
+    assert config.MERMAID_DIR == base_mermaid_dir
 
 
 def test_cli_reports_missing_input(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
