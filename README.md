@@ -1,5 +1,10 @@
 # md2pdf
 
+[![CI](docs/assets/badge-ci.svg)](.github/workflows/ci.yml)
+[![Release](docs/assets/badge-release.svg)](.github/workflows/release.yml)
+[![MIT](docs/assets/badge-license.svg)](LICENSE)
+[![Python](docs/assets/badge-python.svg)](pyproject.toml)
+
 `md2pdf` converts Markdown files into A4 portrait PDF documents with a restrained layout close to ГОСТ Р 7.32 conventions: serif font, 14 pt body text, 1.5 line spacing, 1.25 cm paragraph indent, simple tables, code blocks, Mermaid diagrams and centered page numbers.
 
 The project is intentionally small. It is useful for course work, project reports, internal technical notes and other documents where predictable PDF output matters more than full Markdown compatibility.

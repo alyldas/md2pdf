@@ -22,7 +22,7 @@ def test_versions_are_in_sync() -> None:
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
 
-    assert pyproject["project"]["version"] == config.VERSION == "1.0.0"
+    assert pyproject["project"]["version"] == config.VERSION == "1.0.1"
     assert package["version"] == config.VERSION
     assert lock["version"] == config.VERSION
     assert lock["packages"][""]["version"] == config.VERSION

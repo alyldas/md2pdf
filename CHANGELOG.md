@@ -8,6 +8,14 @@
 
 - Nothing yet.
 
+## [1.0.1] - 2026-05-11
+
+### Changed
+
+- CI and release workflows opt into Node.js 24 for JavaScript actions.
+- Release workflow now runs Mermaid tooling on Node.js 24.
+- README now uses local status badges with relative links.
+
 ## [1.0.0] - 2026-05-11
 
 ### Added

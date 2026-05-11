@@ -9,7 +9,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 ROOT = Path.cwd()
 DEFAULT_INPUT = ROOT / "README.md"
 DEFAULT_OUTPUT = ROOT / "README.pdf"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 FONT_REGULAR = ""
 FONT_BOLD = ""
